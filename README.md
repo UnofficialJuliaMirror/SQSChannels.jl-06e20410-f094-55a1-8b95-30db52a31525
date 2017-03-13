@@ -1,2 +1,2 @@
-# SQSRemoteChannel.jl
-use SQS as a Julia RemoteChannel
+# SQSChannels.jl
+use AWS SQS as a Julia RemoteChannel
