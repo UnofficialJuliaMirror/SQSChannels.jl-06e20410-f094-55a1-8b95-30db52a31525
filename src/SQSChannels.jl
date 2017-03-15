@@ -4,7 +4,7 @@ using AWS
 using AWS.SQS
 using Retry
 
-global const DEFAULT_REPEAT_TIMES = 10
+global const DEFAULT_REPEAT_TIMES = 3
 
 include("types.jl")
 include("base.jl")
