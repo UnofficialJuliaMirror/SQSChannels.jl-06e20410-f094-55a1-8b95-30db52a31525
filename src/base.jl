@@ -1,4 +1,9 @@
 
+function Base.display( c::SQSChannel )
+    display(c.awsEnv)
+    display(c.queueUrl)
+end
+
 function Base.put!(c::SQSChannel, messageBody::String)
     msgAttributes = MessageAttributeType[]
     resp = SendMessage(c.awsEnv;
@@ -63,4 +68,16 @@ function Base.empty!( c::SQSChannel )
         return false
         # println("Test for Purge Queue Failed")
     end
+end
+
+function Base.start( c::SQSChannel )
+    error("unimplemented")
+end
+
+function Base.next( c::SQSChannel )
+    error("unimplemented")
+end
+
+function Base.done!( c::SQSChannel )
+    error("unimplemented")
 end
