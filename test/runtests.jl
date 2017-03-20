@@ -17,7 +17,9 @@ println("fetched message: $(message)")
 @assert message == testmsg
 
 println("test take message ...")
-take!(c)
+put!(c, testmsg)
+message = take!(c)
+@assert message == testmsg
 
 println("test batch sending of a collection of messages")
 msgCollection = Set("$i" for i in 1:5)

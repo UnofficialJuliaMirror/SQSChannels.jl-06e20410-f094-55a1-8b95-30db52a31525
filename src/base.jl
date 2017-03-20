@@ -78,6 +78,6 @@ function Base.next( c::SQSChannel )
     error("unimplemented")
 end
 
-function Base.done!( c::SQSChannel )
+function Base.done( c::SQSChannel )
     error("unimplemented")
 end
