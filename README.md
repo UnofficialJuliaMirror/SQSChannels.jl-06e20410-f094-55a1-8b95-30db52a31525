@@ -1,5 +1,6 @@
 SQSChannels.jl
 ===============
+[![Build Status](https://travis-ci.org/seung-lab/SQSChannels.jl.svg?branch=master)](https://travis-ci.org/seung-lab/SQSChannels.jl)
 
 use AWS SQS as a Julia RemoteChannel
 
