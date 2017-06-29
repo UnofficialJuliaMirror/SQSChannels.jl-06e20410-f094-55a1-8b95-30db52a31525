@@ -34,6 +34,6 @@ message = take!(c)
 println("test batch sending of a collection of messages")
 msgCollection = Set("$i" for i in 1:5)
 
-println("test put! a collection of messages ...")
+println("test put! a collection of messages using Batch mode ...")
 put!(c, msgCollection)
 ```
