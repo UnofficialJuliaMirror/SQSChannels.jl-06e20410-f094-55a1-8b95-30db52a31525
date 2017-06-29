@@ -4,7 +4,7 @@ function Base.display( c::SQSChannel )
     display(c.queueUrl)
 end
 
-function Base.put!(c::SQSChannel, messageBody::String)
+function Base.put!(c::SQSChannel, messageBody::AbstractString)
     msgAttributes = MessageAttributeType[]
     resp = SendMessage(c.awsEnv;
                         queueUrl    = c.queueUrl,
@@ -14,9 +14,13 @@ function Base.put!(c::SQSChannel, messageBody::String)
     if resp.http_code < 299
     	println("Sended a message: $(messageBody)")
     else
-    	warn("Test for Send Message Failed")
+    	warn("Sending Message Failed")
     end
 end
+
+function Base.put!(c::SQSChannel, messageCollection::Set)
+    put!(c, [messageCollection...])
+end 
 
 """
     Base.put!( c::SQSChannel,
@@ -26,10 +30,31 @@ Note that this could be implemented using BatchSendMessage function
 to it speedup and enhance the internet stability.
 """
 function Base.put!( c::SQSChannel,
-        messageCollection::Union{Set{String}, Vector{String}} )
-    for msg in messageCollection
-        put!(c, msg)
-    end
+        messageCollection::Vector )
+
+    # the maximum number of batched messages is 10!
+    # http://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-client-side-buffering-request-batching.html
+    for x in 1:10:length(messageCollection)
+        entrySet = Vector{SendMessageBatchRequestEntryType}()
+        for y in 1:10
+            id = x + y - 1
+            if id < length(messageCollection)
+                msg = messageCollection[id]
+                push!(entrySet, 
+                      SendMessageBatchRequestEntryType(; 
+                            id="$(id)-$(randstring())",
+                            messageBody = String(msg)))
+            end 
+        end  
+        sendMessageBatchType = SendMessageBatchType(; 
+            sendMessageBatchRequestEntrySet = entrySet, queueUrl = c.queueUrl)
+        resp = SendMessageBatch(c.awsEnv, sendMessageBatchType)
+        if resp.http_code < 299
+            println("sended a batch of messages. ID from $x")
+        else
+            error("sending a batch of messages failed: $(resp)")
+        end 
+    end 
 end
 
 function Base.fetch( c::SQSChannel )
@@ -62,11 +87,9 @@ end
 function Base.empty!( c::SQSChannel )
     resp = PurgeQueue(c.awsEnv; queueUrl=c.queueUrl)
     if resp.http_code < 299
-        # println("Test for Purge Queue Passed")
-        return true
+        println("Purge Queue Passed")
     else
-        return false
-        # println("Test for Purge Queue Failed")
+        error("Purge Queue Failed: $resp")
     end
 end
 
