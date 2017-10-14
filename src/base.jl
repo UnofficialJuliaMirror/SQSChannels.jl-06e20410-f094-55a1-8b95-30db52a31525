@@ -1,6 +1,6 @@
 
 function Base.show( io::IO, c::SQSChannel )
-    show(c.queueUrl)
+    show(io, c.queueUrl)
 end
 
 function Base.put!(c::SQSChannel, messageBody::AbstractString)
