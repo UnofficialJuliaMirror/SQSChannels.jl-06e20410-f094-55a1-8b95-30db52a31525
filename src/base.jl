@@ -1,7 +1,6 @@
 
-function Base.display( c::SQSChannel )
-    display(c.awsEnv)
-    display(c.queueUrl)
+function Base.show( io::IO, c::SQSChannel )
+    show(c.queueUrl)
 end
 
 function Base.put!(c::SQSChannel, messageBody::AbstractString)
