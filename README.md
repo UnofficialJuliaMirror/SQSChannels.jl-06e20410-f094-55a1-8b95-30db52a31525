@@ -4,6 +4,8 @@ SQSChannels.jl
 
 use AWS SQS as a Julia RemoteChannel
 
+Note: this package was deprecated in favor of AWSSQSMessages in [AWSSQS.jl](https://github.com/samoconnor/AWSSQS.jl). 
+
 ## Installation
     Pkg.add("SQSChannels")
 
