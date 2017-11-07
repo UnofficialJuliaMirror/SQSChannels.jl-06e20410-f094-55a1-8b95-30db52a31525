@@ -1,7 +1,7 @@
 
 export SQSChannel
 
-immutable SQSChannel <: AbstractChannel{Any}
+struct SQSChannel <: AbstractChannel{Any}
     awsEnv              ::AWSEnv
     queueUrl            ::String
     # visibilityTimeout   ::Int       # unit is seconds
