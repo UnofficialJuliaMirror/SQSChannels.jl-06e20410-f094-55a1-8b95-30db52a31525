@@ -1,7 +1,7 @@
 module SQSChannels
-
+using AWSCore 
 using AWSSQS
-using Retry
+#using Retry
 
 global const DEFAULT_REPEAT_TIMES = 3
 
@@ -10,8 +10,7 @@ export SQSChannel
 export set_message_visibility_timeout, list_queue_urls
 
 struct SQSChannel <: AbstractChannel
-    awsEnv              ::AWSEnv
-    queueUrl            ::String
+    queue               ::AWSSQS.AWSQueue
     # visibilityTimeout   ::Int       # unit is seconds
 end
 
@@ -19,32 +18,18 @@ end
     SQSChannel(queueUrl::String)
 construct a SQSChannel, the queueUrl can also be a queue name
 """
-function SQSChannel(queueUrl::String;
-                    awsEnv = AWS.AWSEnv())
-    if !contains(queueUrl, "https://sqs")
-        # this is a queue name
-        resp = SQS.GetQueueUrl( awsEnv; queueName = queueUrl )
-        queueUrl = resp.obj.queueUrl
-    end
-    SQSChannel( awsEnv, queueUrl )
+function SQSChannel(queueName::String;
+                    awsCre::Dict{Symbol, Any} = AWSCore.aws_config())
+    queue = sqs_get_queue(awsCre, queueName)
+    SQSChannel( queue )
 end
 
 function Base.show( io::IO, c::SQSChannel )
-    show(io, c.queueUrl)
+    show(io, c.queue)
 end
 
 function Base.put!(c::SQSChannel, messageBody::AbstractString)
-    msgAttributes = MessageAttributeType[]
-    resp = SendMessage(c.awsEnv;
-                        queueUrl    = c.queueUrl,
-                        delaySeconds= 0,
-                        messageBody = messageBody,
-                        messageAttributeSet=msgAttributes)
-    if resp.http_code < 299
-    	println("Sended a message: $(messageBody)")
-    else
-    	warn("Sending Message Failed")
-    end
+    sqs_send_message(c.queue, messageBody) 
 end
 
 function Base.put!(c::SQSChannel, messageCollection::Set)
@@ -52,55 +37,27 @@ function Base.put!(c::SQSChannel, messageCollection::Set)
 end 
 
 """
-    Base.put!( c::SQSChannel,
-        messageCollection::Union{Set{String}, Vector{String}} )
+    Base.put!( c::SQSChannel, messageCollection::Vector{String} )
 put a collection of messages to SQS queue.
 Note that this could be implemented using BatchSendMessage function
 to it speedup and enhance the internet stability.
 """
-function Base.put!( c::SQSChannel,
-        messageCollection::Vector )
-
+function Base.put!( c::SQSChannel, messageCollection::Vector )
     # the maximum number of batched messages is 10!
     # http://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-client-side-buffering-request-batching.html
     for x in 1:10:length(messageCollection)
-        entrySet = Vector{SendMessageBatchRequestEntryType}()
-        for y in 1:10
-            id = x + y - 1
-            if id < length(messageCollection)
-                msg = messageCollection[id]
-                push!(entrySet, 
-                      SendMessageBatchRequestEntryType(; 
-                            id="$(id)-$(randstring())",
-                            messageBody = String(msg)))
-            end 
-        end  
-        sendMessageBatchType = SendMessageBatchType(; 
-            sendMessageBatchRequestEntrySet = entrySet, queueUrl = c.queueUrl)
-        resp = SendMessageBatch(c.awsEnv, sendMessageBatchType)
-        if resp.http_code < 299
-            println("sended a batch of messages. ID from $x")
-        else
-            error("sending a batch of messages failed: $(resp)")
-        end 
+        @show messageCollection[x:min( x+9, length(messageCollection)) ]
+        sqs_send_message_batch(c.queue, messageCollection[x:min( x+9, length(messageCollection)) ])
     end 
 end
 
 function Base.fetch( c::SQSChannel )
-    local resp
-    @repeat DEFAULT_REPEAT_TIMES try
-        resp=ReceiveMessage(c.awsEnv; queueUrl=c.queueUrl,
-                attributeNameSet=["All"], messageAttributeNameSet=["All"])
-    catch e
-        @show e
-    end
-    msg = resp.obj.messageSet[1]
-    return msg.receiptHandle, msg.body
+    m = sqs_receive_message( c.queue )
+    return m, m[:message]
 end
 
-function Base.delete!(c::SQSChannel, handle::String)
-    DeleteMessage(c.awsEnv; queueUrl = c.queueUrl,
-                        receiptHandle = handle)
+function Base.delete!(c::SQSChannel, m)
+    sqs_delete_message(c.queue, m)
 end
 
 function Base.take!( c::SQSChannel )
@@ -114,46 +71,22 @@ function Base.isempty( c::SQSChannel )
 end
 
 function Base.empty!( c::SQSChannel )
-    resp = PurgeQueue(c.awsEnv; queueUrl=c.queueUrl)
-    if resp.http_code < 299
-        println("Purge Queue Passed")
-    else
-        error("Purge Queue Failed: $resp")
-    end
+    sqs_flush(c.queue)
 end
 
 function Base.start( c::SQSChannel ) nothing end
 
 function Base.next( c::SQSChannel )
-    (sqs_receive_message(c.queue))
+    sqs_receive_message(c.queue), nothing
 end
 
-function Base.done( c::SQSChannel )
-    error("unimplemented")
-end
+function Base.done( c::SQSChannel ) false end
 
 ########################## utils ##########################
-"""
-    list_queue_urls( c::SQSChannel )
-get the list of queue url links
-"""
-function list_queue_urls( c::SQSChannel )
-    queues = SQS.ListQueues( c.awsEnv )
-    queues.obj.queueUrlSet
-end
 
 function set_message_visibility_timeout( c::SQSChannel, messageHandle::String;
                                         timeout::Int = 300 )
-    changeMessageVisibilityType = ChangeMessageVisibilityType(;
-            queueUrl            = c.queueUrl,
-            receiptHandle       = messageHandle,
-            visibilityTimeout   = timeout )
-    resp = ChangeMessageVisibility(c.awsEnv, changeMessageVisibilityType)
-    if resp.http_code < 299
-    	println("Changed Message Visibility timeout to $timeout")
-    else
-    	warn("Change Message Visibility Failed")
-    end
+    error("unimplemented")
 end
 
 end # end of module
