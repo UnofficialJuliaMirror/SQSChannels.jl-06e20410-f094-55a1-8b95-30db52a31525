@@ -10,16 +10,16 @@ using SQSChannels
 
     testmsg = "test message"
 
-    #println("test batch mode of put! ...")
-    #msgs = repeat([testmsg], outer = 24)
-    #put!(c, msgs)
+    println("test batch mode of put! ...")
+    msgs = repeat([testmsg], outer = 24)
+    put!(c, msgs)
 
-    #println("test put! a set of messages ...")
-    #msgCollection = Set("$i" for i in 1:5)
-    #put!(c, msgCollection)
-    #for i in 1:5
-    #    msg = take!(c)
-    #end
+    println("test put! a set of messages ...")
+    msgCollection = Set("$i" for i in 1:5)
+    put!(c, msgCollection)
+    for i in 1:5
+        msg = take!(c)
+    end
 
     println("test put! a single message ...")
     put!(c, testmsg)
